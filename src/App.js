@@ -46,6 +46,7 @@ const App = () => {
         sessionId: generateSessionId(message),
         action: "sendMessage",
         [config.inputField]: message,
+        filecount: files.length,
         files: files.map((file, index) => ({
           fileName: file.name,
           fileSize: `${(file.size / 1024).toFixed(1)} kB`,
