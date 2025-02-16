@@ -24,23 +24,47 @@ const App = () => {
     setMessages((prevMessages) => [...prevMessages, messageObj]);
 
     try {
-      // Create FormData for the request
-      const formData = new FormData();
-      formData.append('message', message);
-      // Append all files with the same field name to allow multiple files
-      files.forEach(file => {
-        formData.append('files', file);
-      });
+      let requestData;
+      let headers = {};
+
+      if (files.length > 0) {
+        // If there are files, use FormData
+        const formData = new FormData();
+        
+        // Add message data
+        const messageData = {
+          sessionId: "29d327b0582d4ff9add47c8e50f3c1f2",
+          action: "sendMessage",
+          chatInput: message
+        };
+        formData.append('message', JSON.stringify(messageData));
+        
+        // Append files
+        files.forEach(file => {
+          formData.append('files', file);
+        });
+
+        requestData = formData;
+        headers = {
+          'Content-Type': 'multipart/form-data'
+        };
+      } else {
+        // If no files, send JSON directly
+        requestData = {
+          sessionId: "29d327b0582d4ff9add47c8e50f3c1f2",
+          action: "sendMessage",
+          chatInput: message
+        };
+        headers = {
+          'Content-Type': 'application/json'
+        };
+      }
 
       // Send message to n8n webhook
       const response = await axios.post(
         config.webhookUrl,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
+        requestData,
+        { headers }
       );
 
       // Add response message to the chat
