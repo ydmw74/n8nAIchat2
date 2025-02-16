@@ -24,41 +24,39 @@ const App = () => {
     setMessages((prevMessages) => [...prevMessages, messageObj]);
 
     try {
-      let requestData;
-      let headers = {};
+      // Create FormData for the request
+      const formData = new FormData();
 
-      if (files.length > 0) {
-        // If there are files, use FormData
-        const formData = new FormData();
-        
-        // Add message data
-        const messageData = {
-          sessionId: "29d327b0582d4ff9add47c8e50f3c1f2",
-          action: "sendMessage",
-          chatInput: message
-        };
-        formData.append('message', JSON.stringify(messageData));
-        
-        // Append files
-        files.forEach(file => {
-          formData.append('files', file);
-        });
+      // Add the main message structure as a JSON string
+      const messageData = {
+        sessionId: "29d327b0582d4ff9add47c8e50f3c1f2",
+        action: "sendMessage",
+        chatInput: message,
+        files: files.map((file, index) => ({
+          fileName: file.name,
+          fileSize: `${(file.size / 1024).toFixed(1)} kB`,
+          fileType: file.type.split('/')[0],
+          mimeType: file.type,
+          fileExtension: file.name.split('.').pop(),
+          binaryKey: `data${index}`
+        }))
+      };
 
-        requestData = formData;
-        headers = {
-          'Content-Type': 'multipart/form-data'
-        };
-      } else {
-        // If no files, send JSON directly
-        requestData = {
-          sessionId: "29d327b0582d4ff9add47c8e50f3c1f2",
-          action: "sendMessage",
-          chatInput: message
-        };
-        headers = {
-          'Content-Type': 'application/json'
-        };
-      }
+      // Add the JSON message data directly
+      Object.entries(messageData).forEach(([key, value]) => {
+        formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+      });
+      
+      // Add the actual files
+      files.forEach((file, index) => {
+        formData.append(`data${index}`, file);
+      });
+
+      const headers = {
+        'Content-Type': 'multipart/form-data'
+      };
+
+      const requestData = formData;
 
       // Send message to n8n webhook
       const response = await axios.post(
@@ -68,9 +66,10 @@ const App = () => {
       );
 
       // Add response message to the chat
+      const responseText = response.data[0]?.text || 'No response received';
       setMessages((prevMessages) => [
         ...prevMessages,
-        { text: response.data.reply, isUser: false },
+        { text: responseText, isUser: false },
       ]);
     } catch (error) {
       console.error('Error sending message:', error);
