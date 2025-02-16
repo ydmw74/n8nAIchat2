@@ -36,6 +36,19 @@ The following information is transmitted for each file:
 - `fileExtension`: File extension
 - `binaryKey`: Key for accessing the binary data
 
+## Setup
+
+Before building the application, you need to configure the settings in `src/config.js`:
+
+```javascript
+const config = {
+  webhookUrl: 'http://n8n.example.com:5678/webhook/your-webhook-id', // Replace with your n8n webhook URL
+  inputField: 'chatInput'  // Field name for the message input in the request
+};
+```
+
+Make sure to replace the `webhookUrl` with your actual n8n webhook endpoint URL.
+
 ## Technical Details
 
 - Developed with React
