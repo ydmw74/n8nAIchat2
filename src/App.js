@@ -7,6 +7,18 @@ import './App.css';
 
 const App = () => {
   const [messages, setMessages] = useState([]);
+  const [status, setStatus] = useState({ type: null, message: null });
+
+  const generateSessionId = (message) => {
+    return `${Date.now()}-${message.substring(0, 100)}`;
+  };
+
+  const setStatusMessage = (type, message) => {
+    setStatus({ type, message });
+    if (type === 'complete' || type === 'error') {
+      setTimeout(() => setStatus({ type: null, message: null }), 3000);
+    }
+  };
 
   const handleSendMessage = async (message, files) => {
     // Create message object
@@ -27,11 +39,13 @@ const App = () => {
       // Create FormData for the request
       const formData = new FormData();
 
+      setStatusMessage('progress', 'Sending message...');
+      
       // Add the main message structure as a JSON string
       const messageData = {
-        sessionId: "29d327b0582d4ff9add47c8e50f3c1f2",
+        sessionId: generateSessionId(message),
         action: "sendMessage",
-        chatInput: message,
+        [config.inputField]: message,
         files: files.map((file, index) => ({
           fileName: file.name,
           fileSize: `${(file.size / 1024).toFixed(1)} kB`,
@@ -65,17 +79,48 @@ const App = () => {
         { headers }
       );
 
-      // Add response message to the chat
-      const responseText = response.data[0]?.text || 'No response received';
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { text: responseText, isUser: false },
-      ]);
+      if (response.status === 200) {
+        setStatusMessage('complete', 'Message sent successfully');
+        
+        // Log the raw response for debugging
+        console.log('Raw response:', response.data);
+        console.log('Response type:', typeof response.data);
+        
+        // Parse the response if it's a string
+        let parsedData = response.data;
+        if (typeof response.data === 'string') {
+          try {
+            parsedData = JSON.parse(response.data);
+          } catch (e) {
+            console.error('Failed to parse response:', e);
+            throw new Error('Failed to parse response as JSON');
+          }
+        }
+
+        console.log('Parsed data:', parsedData);
+
+        // Handle both array and single object responses
+        const responseArray = Array.isArray(parsedData) ? parsedData : [parsedData];
+        
+        if (!responseArray[0] || typeof responseArray[0].text !== 'string') {
+          console.error('Invalid response structure:', responseArray);
+          throw new Error('Response does not contain text field');
+        }
+
+        const responseText = responseArray[0].text;
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { text: responseText, isUser: false },
+        ]);
+      } else {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
+      setStatusMessage('error', `Error: ${error.message}`);
       setMessages((prevMessages) => [
         ...prevMessages,
-        { text: 'Sorry, there was an error processing your message.', isUser: false },
+        { text: `Error: ${error.response?.data?.message || error.message}`, isUser: false },
       ]);
     }
   };
@@ -84,6 +129,11 @@ const App = () => {
     <div className="app">
       <div className="chat-container">
         <h1>n8n AI Chat</h1>
+        {status.type && (
+          <div className={`status-message ${status.type}`}>
+            {status.message}
+          </div>
+        )}
         <ChatWindow messages={messages} />
         <ChatInput onSendMessage={handleSendMessage} />
       </div>
