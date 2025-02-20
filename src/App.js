@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import ChatInput from './components/ChatInput';
-import ChatWindow from './components/ChatWindow';
-import Login from './components/Login';
-import Register from './components/Register';
-import config from './config';
+import ChatInput from './components/ChatInput.js';
+import ChatWindow from './components/ChatWindow.js';
+import Login from './components/Login.js';
+import Register from './components/Register.js';
+import config from './config.js';
 import './App.css';
 
 const App = () => {
@@ -12,15 +12,8 @@ const App = () => {
   const [status, setStatus] = useState({ type: null, message: null });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
-  const [users, setUsers] = useState(() => {
-    const storedUsers = localStorage.getItem('users');
-    return storedUsers ? JSON.parse(storedUsers) : [];
-  });
   const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('users', JSON.stringify(users));
-  }, [users]);
+  const [username, setUsername] = useState('');
 
   const generateSessionId = (message) => {
     return `${Date.now()}-${message.substring(0, 100)}`;
@@ -33,39 +26,37 @@ const App = () => {
     }
   };
 
-  const handleLogin = (username, password) => {
-    const user = users.find(u => u.username === username && u.password === password);
-    if (user) {
-      setIsLoggedIn(true);
-      setIsAdmin(user.isAdmin);
-      setStatusMessage('complete', 'Logged in successfully');
-    } else {
-      setStatusMessage('error', 'Invalid credentials');
-    }
+  const handleLogin = async (username, password, isAdmin) => {
+    setIsLoggedIn(true);
+    setIsAdmin(isAdmin);
+    setUsername(username);
+    setStatusMessage('complete', 'Logged in successfully');
   };
 
-  const handleRegister = (username, password) => {
-    if (users.find(u => u.username === username)) {
-      setStatusMessage('error', 'Username already exists');
-      return;
+  const handleRegister = async (username, password) => {
+    try {
+      const response = await axios.post('http://localhost:3001/register', {
+        username,
+        password
+      });
+
+      if (response.status === 201) {
+        setIsLoggedIn(true);
+        setUsername(username);
+        setStatusMessage('complete', 'Registered successfully');
+        setShowLogin(true);
+      } else {
+        setStatusMessage('error', response.data.message || 'Registration failed');
+      }
+    } catch (error) {
+      setStatusMessage('error', error.response?.data?.message || 'Registration failed');
     }
-
-    const newUser = {
-      username,
-      password,
-      isAdmin: users.length === 0 // First user is admin
-    };
-
-    setUsers([...users, newUser]);
-    setIsLoggedIn(true);
-    setIsAdmin(newUser.isAdmin);
-    setStatusMessage('complete', 'Registered successfully');
-    setShowLogin(true); // Switch to login after registration
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     setIsAdmin(false);
+    setUsername('');
     setStatusMessage('complete', 'Logged out successfully');
   };
 
@@ -77,8 +68,8 @@ const App = () => {
       files: files.map(file => ({
         name: file.name,
         type: file.type,
-        size: file.size
-      }))
+        size: file.size,
+      })),
     };
 
     // Add user message to the chat
@@ -197,7 +188,7 @@ const App = () => {
       ) : (
         <>
           <p>
-            Logged in as {users.find(u => u.isAdmin === isAdmin)?.username} (
+            Logged in as {username} (
             {isAdmin ? 'Admin' : 'User'})
           </p>
           <button onClick={handleLogout}>Logout</button>

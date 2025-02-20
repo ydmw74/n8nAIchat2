@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import ChatMessage from './ChatMessage';
+import ChatMessage from './ChatMessage.js';
 
 const ChatWindow = ({ messages }) => {
   const messagesEndRef = useRef(null);
