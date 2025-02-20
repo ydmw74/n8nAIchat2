@@ -55,3 +55,12 @@ Make sure to replace the `webhookUrl` with your actual n8n webhook endpoint URL.
 - Uses Axios for HTTP requests
 - Supports multipart/form-data for file transfers
 - Error handling and status indicators for better user guidance
+
+## Server Changes
+
+- The server now uses ES modules, requiring the `type: "module"` property in `package.json`.
+- The server now uses dynamic import for `sqlite3` to ensure compatibility with ES modules.
+
+## Frontend Changes
+
+- The frontend now requires `.js` extensions in import statements due to the project being configured as an ES module.
