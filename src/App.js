@@ -1,13 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ChatInput from './components/ChatInput';
 import ChatWindow from './components/ChatWindow';
+import Login from './components/Login';
+import Register from './components/Register';
 import config from './config';
 import './App.css';
 
 const App = () => {
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState({ type: null, message: null });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showLogin, setShowLogin] = useState(true);
+  const [users, setUsers] = useState(() => {
+    const storedUsers = localStorage.getItem('users');
+    return storedUsers ? JSON.parse(storedUsers) : [];
+  });
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('users', JSON.stringify(users));
+  }, [users]);
 
   const generateSessionId = (message) => {
     return `${Date.now()}-${message.substring(0, 100)}`;
@@ -18,6 +31,42 @@ const App = () => {
     if (type === 'complete' || type === 'error') {
       setTimeout(() => setStatus({ type: null, message: null }), 3000);
     }
+  };
+
+  const handleLogin = (username, password) => {
+    const user = users.find(u => u.username === username && u.password === password);
+    if (user) {
+      setIsLoggedIn(true);
+      setIsAdmin(user.isAdmin);
+      setStatusMessage('complete', 'Logged in successfully');
+    } else {
+      setStatusMessage('error', 'Invalid credentials');
+    }
+  };
+
+  const handleRegister = (username, password) => {
+    if (users.find(u => u.username === username)) {
+      setStatusMessage('error', 'Username already exists');
+      return;
+    }
+
+    const newUser = {
+      username,
+      password,
+      isAdmin: users.length === 0 // First user is admin
+    };
+
+    setUsers([...users, newUser]);
+    setIsLoggedIn(true);
+    setIsAdmin(newUser.isAdmin);
+    setStatusMessage('complete', 'Registered successfully');
+    setShowLogin(true); // Switch to login after registration
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setIsAdmin(false);
+    setStatusMessage('complete', 'Logged out successfully');
   };
 
   const handleSendMessage = async (message, files) => {
@@ -128,16 +177,40 @@ const App = () => {
 
   return (
     <div className="app">
-      <div className="chat-container">
-        <h1>n8n AI Chat</h1>
-        {status.type && (
-          <div className={`status-message ${status.type}`}>
-            {status.message}
+      <h1>n8n AI Chat</h1>
+      {status.type && (
+        <div className={`status-message ${status.type}`}>
+          {status.message}
+        </div>
+      )}
+      {!isLoggedIn ? (
+        <>
+          {showLogin ? (
+            <Login onLogin={handleLogin} />
+          ) : (
+            <Register onRegister={handleRegister} />
+          )}
+          <button onClick={() => setShowLogin(!showLogin)}>
+            {showLogin ? 'Register' : 'Login'}
+          </button>
+        </>
+      ) : (
+        <>
+          <p>
+            Logged in as {users.find(u => u.isAdmin === isAdmin)?.username} (
+            {isAdmin ? 'Admin' : 'User'})
+          </p>
+          <button onClick={handleLogout}>Logout</button>
+        </>
+      )}
+      {isLoggedIn && (
+        <div className="chat-container">
+          <div className="chat-area">
+            <ChatWindow messages={messages} />
+            <ChatInput onSendMessage={handleSendMessage} />
           </div>
-        )}
-        <ChatWindow messages={messages} />
-        <ChatInput onSendMessage={handleSendMessage} />
-      </div>
+        </div>
+      )}
     </div>
   );
 };
